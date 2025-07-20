@@ -314,6 +314,24 @@ elseif(SIMPLEBLE_BACKEND_ANDROID)
     include_directories(${ANDROID_NDK}/sysroot/usr/include)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/backends/android)
 
+     # Create simplejni shared library for JavaVM storage
+    add_library(simplejni SHARED ${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/internal/simplejni/src/SimpleJNI.cpp)
+    set_target_properties(simplejni PROPERTIES
+        CXX_VISIBILITY_PRESET default
+        VISIBILITY_INLINES_HIDDEN OFF
+        DEBUG_POSTFIX "-debug"
+    )
+    target_link_options(simplejni PUBLIC -Wl,-E)
+    target_link_libraries(simplejni log android)
+
+    install(
+        TARGETS simplejni
+        EXPORT simpleble-config
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+
     #add_compile_options(-DANDROID -D__ANDROID_API__=${ANDROID_NATIVE_API_LEVEL})
 
     target_sources(simpleble PRIVATE
@@ -337,7 +355,7 @@ elseif(SIMPLEBLE_BACKEND_ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/android/types/java/util/Iterator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/android/types/java/util/List.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/android/types/java/util/Set.cpp)
-    target_link_libraries(simpleble PUBLIC android nativehelper log)
+    target_link_libraries(simpleble PUBLIC android nativehelper log simplejni)
 endif()
 
 apply_build_options(simpleble

@@ -1,27 +1,43 @@
 #pragma once
 
 #include <jni.h>
-
 #include <mutex>
+#include <android/log.h>
+
+// External functions provided by simplejni library
+extern "C" {
+    void set_global_javavm(JavaVM* vm);
+    JavaVM* get_global_javavm();
+}
 
 namespace SimpleJNI {
 
 // Generic class to handle the Java Virtual Machine (JVM)
 class VM {
   public:
-    // TODO: Make the VM class transparent to the JavaVM pointer.
+    // Set the JavaVM (to be called from React Native context)
+    static void set_jvm(JavaVM* vm) {
+        set_global_javavm(vm);
+        __android_log_print(ANDROID_LOG_INFO, "SimpleBLE", "JavaVM set via Global VM: %p", vm);
+    }
+    
+    // Get the stored JavaVM
     static JavaVM* jvm() {
-        static std::mutex get_mutex;  // Static mutex to ensure thread safety when accessing the VM
-        static VM instance;           // Static instance of the VM to ensure proper lifecycle management
-
-        if (instance._jvm == nullptr) {
-            std::scoped_lock lock(get_mutex);  // Unlock the mutex on function return
-            jsize count;
-            if (JNI_GetCreatedJavaVMs(&instance._jvm, 1, &count) != JNI_OK || count == 0) {
-                throw std::runtime_error("Failed to get the Java Virtual Machine");
-            }
+        JavaVM* vm = get_global_javavm();
+        __android_log_print(ANDROID_LOG_INFO, "SimpleBLE", "JavaVM retrieved via global VM: %p", vm);
+        if (vm == nullptr) {
+            throw std::runtime_error("JavaVM not initialized via Global VM - call set_jvm first");
         }
-        return instance._jvm;
+        return vm;
+    }
+
+    static bool is_jvm_available() {
+        try {
+            VM::jvm();
+            return true;
+        } catch (...) {
+            return false;
+        }
     }
 
     static bool is_jvm_alive() {
@@ -78,11 +94,7 @@ class VM {
 
   private:
     VM() = default;
-    virtual ~VM() = default;
-    VM(VM& other) = delete;              // Remove the copy constructor
-    void operator=(const VM&) = delete;  // Remove the copy assignment
-
-    JavaVM* _jvm = nullptr;
+    ~VM() = default;
 };
 
 }  // namespace SimpleJNI
